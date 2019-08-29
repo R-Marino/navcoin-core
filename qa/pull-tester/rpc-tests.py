@@ -112,8 +112,6 @@ testScripts = [
      'wallet.py',
     'wallet-hd.py',
 
-    'staking_mininputvalue.py',
-
 #    'listtransactions.py',
      'receivedby.py',
 #    'mempool_resurrect_test.py',
@@ -188,6 +186,7 @@ testScripts = [
     'sendtoaddress.py',
     'stakeimmaturebalance.py',
     'rpc-help.py',
+    'staking_mininputvalue.py',
 ]
 #if ENABLE_ZMQ:
 #    testScripts.append('zmq_test.py')
