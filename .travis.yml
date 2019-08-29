@@ -65,6 +65,7 @@ script:
   - if [ $SECONDS -gt 2000 ]; then export CONTINUE=0; fi  # Likely the build took very long; The tests take about 1000s, so we should abort if we have less than 50*60-1000=2000s left
   - if [ $CONTINUE = "1" ]; then set -o errexit; source .travis/test_06_script_b.sh; else set +o errexit; echo "$CACHE_ERR_MSG"; false; fi
 after_success:
+  - cd ..
   - if [ $SECONDS -gt 2000 ]; then export CONTINUE=0; fi  # Likely the build took very long; The tests take about 1000s, so we should abort if we have less than 50*60-1000=2000s left
   - if [ $CONTINUE = "1" ]; then set -o errexit; source .travis/test_08_after_success.sh; else set +o errexit; echo "$CACHE_ERR_MSG"; false; fi
 after_script:
