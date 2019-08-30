@@ -16,7 +16,7 @@ if [ "$RUN_FUNC_SINGLE_TESTS" != false ]; then
   # DOCKER_EXEC export
 
   echo "Test one by one: Started at " $SECONDS
-  DOCKER_EXEC ./qa/pull-tester/rpc-tests.py -parallel=1 $RUN_FUNC_SINGLE_TESTS
+  DOCKER_EXEC LOCAL_NTP=-1 ./qa/pull-tester/rpc-tests.py -parallel=1 $RUN_FUNC_SINGLE_TESTS
 
   END_FOLD
 fi

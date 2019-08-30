@@ -166,8 +166,9 @@ def initialize_datadir(dirname, n):
         f.write("listenonion=0\n")
 
         if os.getenv("LOCAL_NTP", False):
-            f.write("ntpserver=localhost\n")
             f.write("ntpminmeasures=1\n")
+        if os.getenv("LOCAL_NTP", False) == 1:
+            f.write("ntpserver=localhost\n")
     return datadir
 
 def rpc_auth_pair(n):
