@@ -19,3 +19,4 @@ fi
 #  DOCKER_EXEC LOCAL_NTP=1 ./qa/pull-tester/rpc-tests.py -parallel=3 --coverage --failfast
 #  END_FOLD
 #fi
+cd ..

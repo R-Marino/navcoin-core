@@ -65,19 +65,9 @@ script:
   - if [ $SECONDS -gt 2000 ]; then export CONTINUE=0; fi  # Likely the build took very long; The tests take about 1000s, so we should abort if we have less than 50*60-1000=2000s left
   - if [ $CONTINUE = "1" ]; then set -o errexit; source .travis/test_06_script_b.sh; else set +o errexit; echo "$CACHE_ERR_MSG"; false; fi
 after_success:
-  - if [ "$RUN_FUNCTIONAL_TESTS" = "true" ]; then
-  -   BEGIN_FOLD functional-tests
-  -    echo "Shell limit and tmp disk free"
-  -    DOCKER_EXEC LOCAL_NTP=1 ulimit -a
-  -    DOCKER_EXEC LOCAL_NTP=1 df /tmp
-  -    echo "Test it alone"
-  -    DOCKER_EXEC LOCAL_NTP=1 ./qa/pull-tester/rpc-tests.py staking_mininputvalue.py
-  -   END_FOLD
-  - fi
-  -  cd ..
-
   - if [ $SECONDS -gt 2000 ]; then export CONTINUE=0; fi  # Likely the build took very long; The tests take about 1000s, so we should abort if we have less than 50*60-1000=2000s left
-  - if [ $CONTINUE = "1" ]; then set -o errexit; source .travis/test_08_after_success.sh; else set +o errexit; echo "$CACHE_ERR_MSG"; false; fi
+  - if [ $CONTINUE = "1" ]; then set -o errexit; source .travis/test_08_after_success_a_single.sh; else set +o errexit; echo "$CACHE_ERR_MSG"; false; fi
+  - if [ $CONTINUE = "1" ]; then set -o errexit; source .travis/test_08_after_success_b_multi.sh; else set +o errexit; echo "$CACHE_ERR_MSG"; false; fi
 after_script:
   - echo $TRAVIS_COMMIT_RANGE
   - echo $TRAVIS_COMMIT_LOG
