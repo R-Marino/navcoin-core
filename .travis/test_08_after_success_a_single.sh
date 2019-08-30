@@ -8,14 +8,16 @@ export LC_ALL=C.UTF-8
 
 cd build || (echo "could not enter build directory"; exit 1)
 
-if [ "$RUN_FUNCTIONAL_TESTS" = "true" ]; then
+if [ "$RUN_FUNC_SINGLE_TESTS" != false ]; then
   BEGIN_FOLD functional-tests-singlejobs
-    echo "Shell limit and tmp disk free"
-    DOCKER_EXEC LOCAL_NTP=1 ulimit -a
-    DOCKER_EXEC LOCAL_NTP=1 df /tmp
+  # echo "Shell limit and tmp disk free"
+  # DOCKER_EXEC ulimit -a
+  # DOCKER_EXEC df /tmp
+  # DOCKER_EXEC export
 
-    echo "Test one by one"
-    DOCKER_EXEC LOCAL_NTP=1 ./qa/pull-tester/rpc-tests.py -parallel=1 staking_mininputvalue.py
+  echo "Test one by one: Started at " $SECONDS
+  DOCKER_EXEC ./qa/pull-tester/rpc-tests.py -parallel=1 $RUN_FUNC_SINGLE_TESTS
+
   END_FOLD
 fi
 cd ..
