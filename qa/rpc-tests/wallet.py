@@ -239,6 +239,7 @@ class WalletTest (NavCoinTestFramework):
         stop_nodes(self.nodes)
         wait_navcoinds()
         self.nodes = start_nodes(3, self.options.tmpdir)
+        self.nodes[2].staking(False)
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
         connect_nodes_bi(self.nodes,2,0)

@@ -59,6 +59,12 @@ class ColdStakingFeeTest(NavCoinTestFramework):
         assert_equal((node0balance+fees0) % 100000000, 0)
         assert_equal((node1balance+fees1) % 200000000, 0)
 
+        while True:
+            time.sleep(1)
+            fErrFound = "Coinstake tried to move cold staking coins to a non authorised script" in open(self.options.tmpdir + '/node2/devnet/debug.log').read()
+            if fErrFound  or self.nodes[2].getblockcount() >= 401:
+                break
+
         assert("Coinstake tried to move cold staking coins to a non authorised script" in open(self.options.tmpdir + '/node2/devnet/debug.log').read())
 
 if __name__ == '__main__':

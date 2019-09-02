@@ -9,8 +9,8 @@ from test_framework.util import *
 class MinInputValueTest(NavCoinTestFramework):
     def __init__(self):
         super().__init__()
-        self.setup_clean_chain = False
-        self.num_nodes = 2
+        self.setup_clean_chain = True
+        self.num_nodes = 4
 
     def setup_network(self, split=False):
         self.nodes = []

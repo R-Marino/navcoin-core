@@ -12,12 +12,8 @@ ExitStatus=0
 
 source ../.travis/test_08_opts_override.sh
 
-if [ "$RUN_FUNC_SINGLE_TESTS" != false ]; then
-  BEGIN_FOLD functional-tests-singlejobs
-  # echo "Shell limit and tmp disk free"
-  # DOCKER_EXEC ulimit -a
-  # DOCKER_EXEC df /tmp
-  # DOCKER_EXEC export
+if [ "$RUN_FUNCTIONAL_TESTS" != false ]; then
+  BEGIN_FOLD functional-tests-multi
 
   if [ $SAVE_LOG_TO_DIR ]; then
     ExtraCmd=--savelogsto="$SAVE_LOG_TO_DIR"
@@ -25,16 +21,18 @@ if [ "$RUN_FUNC_SINGLE_TESTS" != false ]; then
   if [ $SAVE_INSUCESS_DIR ]; then
     ExtraCmd="$ExtraCmd --saveinsucess="$SAVE_INSUCESS_DIR""
   fi
+  if [ "$RUN_FUNCTIONAL_TESTS" != true ]; then
+    ExtraCmd="$ExtraCmd $RUN_FUNCTIONAL_TESTS"
+  fi
 
-
-  echo "Test one by one: Started at " $SECONDS
-  DOCKER_EXEC LOCAL_NTP=1 ./qa/pull-tester/rpc-tests.py -parallel=1 $ExtraCmd $RUN_FUNC_SINGLE_TESTS
+  # --failfast --coverage
+  DOCKER_EXEC LOCAL_NTP=1 ./qa/pull-tester/rpc-tests.py -parallel=6 $ExtraCmd
   ExitStatus=$?
   END_FOLD
 
   echo "Test Result: " $TRAVIS_TEST_RESULT  "ExitStatus: " $?
 
-  CURWORK=$TRAVIS_BUILD_ID-$TRAVIS_COMMIT-$TRAVIS_JOB_NUMBER-sng
+  CURWORK=$TRAVIS_BUILD_ID-$TRAVIS_COMMIT-$TRAVIS_JOB_NUMBER-mlt
 
   DOCKER_EXEC ../.travis/test_08_after_success_c_send.sh "$CURWORK-log" "$SAVE_LOG_TO_DIR"
   DOCKER_EXEC ../.travis/test_08_after_success_c_send.sh "$CURWORK-dmp" "$SAVE_INSUCESS_DIR"
@@ -45,5 +43,5 @@ if [ "$RUN_FUNC_SINGLE_TESTS" != false ]; then
     exit 1
   fi
 fi
-
 cd ..
+exit $ExitStatus

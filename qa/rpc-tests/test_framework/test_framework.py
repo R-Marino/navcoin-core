@@ -12,6 +12,9 @@ import sys
 import shutil
 import tempfile
 import traceback
+import tarfile
+import subprocess
+import signal
 
 from .util import (
     initialize_chain,
@@ -121,8 +124,20 @@ class NavCoinTestFramework(object):
         parser.add_option("--coveragedir", dest="coveragedir",
                           help="Write tested RPC commands into this directory")
 
+        parser.add_option("--savelogsall", dest="logsall", default=os.getenv("SAVE_LOG_ALL", 0),
+                          help="Save all test nodes logs (default 0, only failed test)")
+        parser.add_option("--savelogsto", dest="savelogsto", default=os.getenv("SAVE_LOG_TO_DIR"),
+                          help="Directory where save nodes logs")
+        parser.add_option("--saveinsucess", dest="saveinsucess", default=os.getenv("SAVE_INSUCCESS_DIR"),
+                          help="Dir where save failed test's all data")
+
+
         self.add_options(parser)
         (self.options, self.args) = parser.parse_args()
+
+        while ((self.options.tmpdir == self.options.savelogsto) or \
+               (self.options.tmpdir == self.options.saveinsucess)):
+            self.options.tmpdir = tempfile.mkdtemp(prefix="test")
 
         self.options.tmpdir += '/' + str(self.options.port_seed)
 
@@ -167,10 +182,48 @@ class NavCoinTestFramework(object):
 
         if not self.options.noshutdown:
             print("Stopping nodes")
-            stop_nodes(self.nodes)
-            wait_navcoinds()
+            try:
+                stop_nodes(self.nodes)
+                wait_navcoinds()
+            except subprocess.TimeoutExpired:
+                print("WARN: Can't stop all nodes")
+                success = False
         else:
             print("Note: navcoinds were not stopped and may still be running")
+
+        if self.options.saveinsucess and ( \
+                (not success) or \
+                (self.options.nocleanup and os.getenv("TRAVIS", True))):
+            if not os.path.isdir(self.options.saveinsucess):
+                os.makedirs(self.options.saveinsucess)
+            progname =os.path.basename(sys.argv[0])
+            tarname = os.path.join(self.options.saveinsucess, progname)
+            newtarfile = shutil.make_archive(tarname, 'bztar', self.options.tmpdir)
+            print("Test tarfile:", newtarfile)
+
+        if self.options.savelogsto and \
+                ((not success) or (self.options.logsall)):
+            if not os.path.isdir(self.options.savelogsto):
+                os.makedirs(self.options.savelogsto)
+            progname =os.path.splitext(os.path.basename(sys.argv[0]))[0]
+            tarname = os.path.join(self.options.savelogsto, progname + ".logs")
+            logdepth = 3
+            log_ext = (".log", ".txt", ".dump", ".lst", ".doc")
+            tmplength = len(self.options.tmpdir)
+            newtarfile = tarname  + '.tar.bz2'
+            with tarfile.open(newtarfile, "w:bz2") as archive:
+                for fullpath, dirs, files in os.walk(self.options.tmpdir):
+                    if len(fullpath[tmplength:].split(os.path.sep)) > logdepth:
+                        continue
+
+                    for f in files:
+                        if os.path.splitext(f)[1] not in log_ext :
+                            continue
+                        fullfilename = os.path.join(fullpath, f)
+                        archive.add(fullfilename, fullfilename[tmplength:])
+                archive.close()
+
+            print("Logs tarfile:", newtarfile)
 
         if not self.options.nocleanup and not self.options.noshutdown and success:
             print("Cleaning up")

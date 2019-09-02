@@ -28,6 +28,7 @@ import sys
 import subprocess
 import tempfile
 import re
+import signal
 
 sys.path.append("qa/pull-tester/")
 from tests_config import *
@@ -52,15 +53,18 @@ if 'ENABLE_ZMQ' not in vars():
 
 ENABLE_COVERAGE = False
 FAILFAST = False
+NOFAILFAST = False
 
 #Create a set to store arguments and create the passon string
-opts = set()
+opts = []
 passon_args = []
-PASSON_REGEX = re.compile("^--")
+PASSON_REGEX = re.compile("^-")
 PARALLEL_REGEX = re.compile('^-parallel=')
+TIMEOUT_REGEX = re.compile('^-timeout=')
 
 print_help = False
 run_parallel = 4
+runTimeout = 540
 
 for arg in sys.argv[1:]:
     if arg == "--help" or arg == "-h" or arg == "-?":
@@ -68,14 +72,24 @@ for arg in sys.argv[1:]:
         break
     if arg == '--coverage':
         ENABLE_COVERAGE = True
+    elif arg == '--nofailfast':
+            FAILFAST = False
+            NOFAILFAST = True
     elif arg == '--failfast':
-        FAILFAST = True
-    elif PASSON_REGEX.match(arg):
-        passon_args.append(arg)
+        FAILFAST = not NOFAILFAST
     elif PARALLEL_REGEX.match(arg):
         run_parallel = int(arg.split(sep='=', maxsplit=1)[1])
+    elif TIMEOUT_REGEX.match(arg):
+        runTimeout = int(arg.split(sep='=', maxsplit=1)[1])
+    elif arg in ("-win", "-standard", "-extended"):
+        if arg not in opts:
+            opts.append(arg)
+    elif PASSON_REGEX.match(arg):
+        # if arg not in passon_args:
+         passon_args.append(arg)
     else:
-        opts.add(arg)
+        # if arg not in opts:
+            opts.append(arg)
 
 #Set env vars
 if "NAVCOIND" not in os.environ:
@@ -218,14 +232,20 @@ testScriptsExt = [
 
 def runtests():
     test_list = []
+    testLongList = testScripts + testScriptsExt
     if '-extended' in opts:
-        test_list = testScripts + testScriptsExt
+        test_list = testLongList
+    elif '-standard' in opts:
+        test_list = testScripts
+
     elif len(opts) == 0 or (len(opts) == 1 and "-win" in opts):
         test_list = testScripts
     else:
-        for t in testScripts + testScriptsExt:
-            if t in opts or re.sub(".py$", "", t) in opts:
+        for t in opts:
+            if t in testLongList:
                 test_list.append(t)
+            if t+".py" in testLongList:
+                test_list.append(t+".py")
 
     if print_help:
         # Only print help of the first script and exit
@@ -300,25 +320,52 @@ class RPCTestHandler:
             self.num_running += 1
             t = self.test_list.pop(0)
             port_seed = ["--portseed=%s" % len(self.test_list)]
+
+            # copied from https://github.com/bitcoin/bitcoin/pull/8750
+            log_stdout = tempfile.SpooledTemporaryFile(max_size=2**16)
+            log_stderr = tempfile.SpooledTemporaryFile(max_size=2**16)
+
             self.jobs.append((t,
                               time.time(),
                               subprocess.Popen((RPC_TESTS_DIR + t).split() + self.flags + port_seed,
                                                universal_newlines=True,
-                                               stdout=subprocess.PIPE,
-                                               stderr=subprocess.PIPE)))
+                                               stdout=log_stdout,
+                                               stderr=log_stderr),
+                              log_stdout,
+                              log_stderr
+                              ))
+
         if not self.jobs:
             raise IndexError('pop from empty list')
         while True:
             # Return first proc that finishes
             time.sleep(.5)
             for j in self.jobs:
-                (name, time0, proc) = j
+                passed = True
+                (name, time0, proc, log_out, log_err) = j
+                if  int(time.time() - time0) > runTimeout:
+                    print("Timeout Expired. Killing node")
+                    # Stale. Kill Process
+                    proc.send_signal(signal.SIGINT)
+
                 if proc.poll() is not None:
-                    (stdout, stderr) = proc.communicate(timeout=3)
-                    passed = stderr == "" and proc.returncode == 0
+                    try:
+                        (stdout, stderr) = proc.communicate(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        passed = False
+
+                    log_out.seek(0), log_err.seek(0)
+                    [stdout, stderr] = [log_file.read().decode('utf-8') for log_file in (log_out, log_err)]
+                    log_out.close(), log_err.close()
+
+                    passed = passed and int(time.time() - time0) <= runTimeout
+                    passed = passed and stderr == "" and proc.returncode == 0
+
                     self.num_running -= 1
                     self.jobs.remove(j)
                     return name, stdout, stderr, passed, int(time.time() - time0)
+
             print('.', end='', flush=True)
 
 

@@ -362,6 +362,10 @@ def stop_node(node, i):
     del navcoind_processes[i]
 
 def stop_nodes(nodes):
+    if not nodes:
+        print("WARN: No known nodes to stop")
+        return
+
     for node in nodes:
         try:
             node.stop()
